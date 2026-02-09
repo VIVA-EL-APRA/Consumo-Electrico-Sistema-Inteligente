@@ -3,8 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Una demostración de Inteligencia Artificial en el navegador usando TensorFlow.js para predecir consumo eléctrico.">
     <title>NeuroEnergy AI - Predicción de Consumo</title>
     
+    <!-- Icono de la pestaña (Favicon usando emoji para no depender de archivos externos) -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
+
     <!-- Tailwind CSS (Diseño) -->
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -28,13 +32,13 @@
         .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 selection:bg-indigo-100 min-h-screen">
+<body class="bg-slate-50 text-slate-800 selection:bg-indigo-100 min-h-screen flex flex-col">
 
     <!-- HEADER -->
-    <header class="bg-white border-b border-slate-200 sticky top-0 z-10">
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
         <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
             <div class="flex items-center gap-2">
-                <div class="bg-indigo-600 p-2 rounded-lg">
+                <div class="bg-indigo-600 p-2 rounded-lg shadow-indigo-200 shadow-lg">
                     <i data-lucide="brain" class="w-5 h-5 text-white"></i>
                 </div>
                 <h1 class="text-xl font-bold bg-gradient-to-r from-indigo-700 to-indigo-500 bg-clip-text text-transparent">
@@ -42,16 +46,16 @@
                 </h1>
             </div>
             <div class="flex items-center gap-4 text-sm text-slate-500">
-                <span class="hidden sm:inline">TensorFlow.js Core</span>
+                <span class="hidden sm:inline bg-slate-100 px-2 py-1 rounded-md text-slate-600 font-medium text-xs">TensorFlow.js</span>
                 <div class="h-4 w-px bg-slate-200"></div>
-                <span class="flex items-center gap-1">
-                    <i data-lucide="activity" class="w-4 h-4"></i> v1.0.0 (HTML)
-                </span>
+                <a href="https://github.com" target="_blank" class="hover:text-indigo-600 transition-colors" title="Ver en GitHub">
+                    <i data-lucide="github" class="w-5 h-5"></i>
+                </a>
             </div>
         </div>
     </header>
 
-    <main class="max-w-6xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+    <main class="flex-grow max-w-6xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8 w-full">
         
         <!-- COLUMNA IZQUIERDA: CONTROL Y ESTADO -->
         <div class="lg:col-span-7 space-y-6">
@@ -63,22 +67,22 @@
                         <i data-lucide="activity" class="w-5 h-5 text-indigo-500"></i>
                         Panel de Entrenamiento
                     </h2>
-                    <span id="training-badge" class="hidden animate-pulse text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full">
+                    <span id="training-badge" class="hidden animate-pulse text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full border border-indigo-100">
                         ENTRENANDO...
                     </span>
                 </div>
                 
                 <div class="p-6">
                     <div class="grid grid-cols-3 gap-4 mb-6">
-                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 transition-all hover:shadow-md">
                             <p class="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">Época</p>
                             <p id="val-epoch" class="text-2xl font-mono font-semibold text-slate-800">0</p>
                         </div>
-                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 transition-all hover:shadow-md">
                             <p class="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">Error (Loss)</p>
                             <p id="val-loss" class="text-2xl font-mono font-semibold text-slate-800">--</p>
                         </div>
-                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 transition-all hover:shadow-md">
                             <p class="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">Estado</p>
                             <p id="val-status" class="text-sm font-medium mt-2 flex items-center gap-1 text-amber-600">
                                 No entrenado
@@ -89,8 +93,9 @@
                     <!-- GRÁFICO CHART.JS -->
                     <div class="h-64 w-full bg-slate-50 rounded-xl border border-slate-100 p-4 mb-6 relative">
                         <canvas id="lossChart"></canvas>
-                        <div id="chart-placeholder" class="absolute inset-0 flex items-center justify-center text-slate-400 text-sm pointer-events-none">
-                            Esperando datos de entrenamiento...
+                        <div id="chart-placeholder" class="absolute inset-0 flex flex-col items-center justify-center text-slate-400 text-sm pointer-events-none">
+                            <i data-lucide="line-chart" class="w-8 h-8 mb-2 opacity-50"></i>
+                            <p>Esperando datos de entrenamiento...</p>
                         </div>
                     </div>
 
@@ -135,7 +140,7 @@
         <div class="lg:col-span-5 space-y-6">
             
             <div class="bg-indigo-900 text-white rounded-2xl shadow-xl overflow-hidden relative">
-                <div class="absolute top-0 right-0 p-32 bg-indigo-500 rounded-full blur-3xl opacity-20 -mr-16 -mt-16"></div>
+                <div class="absolute top-0 right-0 p-32 bg-indigo-500 rounded-full blur-3xl opacity-20 -mr-16 -mt-16 animate-pulse" style="animation-duration: 4s;"></div>
                 
                 <div class="p-6 relative z-10">
                     <h2 class="text-xl font-bold flex items-center gap-2 mb-6">
@@ -154,7 +159,7 @@
                             <input type="number" id="input-horas" value="5" class="w-full bg-indigo-800/50 border border-indigo-700 rounded-xl px-4 py-3 text-white placeholder-indigo-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all">
                         </div>
 
-                        <button id="btn-predict" onclick="handlePredict()" disabled class="w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all shadow-lg bg-indigo-800 text-indigo-400 cursor-not-allowed">
+                        <button id="btn-predict" onclick="handlePredict()" disabled class="w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all shadow-lg bg-indigo-800 text-indigo-400 cursor-not-allowed border border-indigo-700">
                             <i data-lucide="calculator" class="w-5 h-5"></i>
                             <span id="btn-predict-text">Entrena el modelo primero</span>
                         </button>
@@ -163,7 +168,7 @@
                     <!-- RESULTADO -->
                     <div class="mt-8 pt-6 border-t border-indigo-700/50 text-center">
                         <p class="text-indigo-300 text-sm mb-2 uppercase tracking-wide">Predicción de la IA</p>
-                        <div class="text-5xl font-bold text-white mb-2">
+                        <div class="text-5xl font-bold text-white mb-2 h-14 flex items-center justify-center">
                             <span id="val-prediction" class="text-indigo-600">---</span>
                         </div>
                         <p id="label-prediction" class="text-xs text-indigo-400 hidden">Consumo mensual estimado</p>
@@ -173,7 +178,10 @@
 
             <!-- VISUALIZACIÓN DE DATOS (TABLA) -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-                <h3 class="text-sm font-semibold text-slate-700 mb-4">Datos de Entrenamiento (Muestra)</h3>
+                <h3 class="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
+                    <i data-lucide="database" class="w-4 h-4"></i>
+                    Datos de Entrenamiento (Muestra)
+                </h3>
                 <div class="overflow-hidden rounded-xl border border-slate-200">
                     <table class="w-full text-sm text-left">
                         <thead class="bg-slate-50 text-slate-500 font-semibold">
@@ -192,6 +200,12 @@
 
         </div>
     </main>
+    
+    <footer class="bg-white border-t border-slate-200 py-6 mt-auto">
+        <div class="max-w-6xl mx-auto px-4 text-center text-sm text-slate-500">
+            <p>Desarrollado con TensorFlow.js &bull; Ejecución 100% en el navegador (Client-side)</p>
+        </div>
+    </footer>
 
     <!-- SCRIPTS DE LÓGICA -->
     <script>
@@ -220,11 +234,11 @@
             tr.innerHTML = `
                 <td class="px-4 py-2 font-mono text-slate-600">${row[0]}</td>
                 <td class="px-4 py-2 font-mono text-slate-600">${row[1]}</td>
-                <td class="px-4 py-2 font-mono text-slate-800 text-right">${data.y[i]} kWh</td>
+                <td class="px-4 py-2 font-mono text-slate-800 text-right font-medium">${data.y[i]} kWh</td>
             `;
             tableBody.appendChild(tr);
         });
-        tableBody.innerHTML += `<tr><td colspan="3" class="px-4 py-2 text-center text-xs text-slate-400 italic">...más datos ocultos...</td></tr>`;
+        tableBody.innerHTML += `<tr><td colspan="3" class="px-4 py-2 text-center text-xs text-slate-400 italic bg-slate-50/30">...y más registros...</td></tr>`;
 
         // Configuración de Chart.js
         const ctx = document.getElementById('lossChart').getContext('2d');
@@ -237,9 +251,11 @@
                     data: [],
                     borderColor: '#4f46e5',
                     backgroundColor: 'rgba(79, 70, 229, 0.1)',
-                    borderWidth: 3,
-                    tension: 0.3,
-                    pointRadius: 0
+                    borderWidth: 2,
+                    tension: 0.4, // Curva más suave
+                    pointRadius: 0,
+                    pointHoverRadius: 4,
+                    fill: true
                 }]
             },
             options: {
@@ -248,9 +264,17 @@
                 plugins: { legend: { display: false } },
                 scales: {
                     x: { display: false },
-                    y: { display: false }
+                    y: { 
+                        display: true,
+                        grid: { borderDash: [2, 4], color: '#f1f5f9' },
+                        ticks: { display: false }
+                    }
                 },
-                animation: { duration: 0 } 
+                animation: { duration: 0 },
+                interaction: {
+                    intersect: false,
+                    mode: 'index',
+                },
             }
         });
 
@@ -264,9 +288,12 @@
             if(model.w) model.w.dispose();
             if(model.b) model.b.dispose();
             
+            // Inicializar pesos aleatorios
             model.w = tf.variable(tf.randomNormal([2, 1]));
             model.b = tf.variable(tf.zeros([1]));
-            model.optimizer = tf.train.adam(0.1);
+            
+            // Learning rate ligeramente ajustado para mejor convergencia visual
+            model.optimizer = tf.train.adam(0.05);
             
             updateWeightsUI();
         }
@@ -295,15 +322,22 @@
             const xTrain = tf.tensor2d(data.x);
             const yTrain = tf.tensor2d(data.y);
 
-            for (let i = 0; i <= 2000; i++) {
+            // Aumentamos a 2500 épocas para ver mejor la curva
+            const totalEpochs = 2500;
+
+            for (let i = 0; i <= totalEpochs; i++) {
+                // Paso de entrenamiento
                 model.optimizer.minimize(() => {
                     const pred = predict(xTrain);
                     return lossFunction(pred, yTrain);
                 });
 
-                if (i % 50 === 0 || i === 2000) {
+                // Actualizar UI cada 50 pasos para no congelar el navegador
+                if (i % 50 === 0 || i === totalEpochs) {
                     const currentLoss = lossFunction(predict(xTrain), yTrain).dataSync()[0];
                     updateTrainingUI(i, currentLoss);
+                    
+                    // Pequeña pausa para permitir que la UI se renderice
                     await new Promise(resolve => requestAnimationFrame(resolve));
                 }
             }
@@ -321,15 +355,17 @@
             const aparatos = parseFloat(document.getElementById('input-aparatos').value);
             const horas = parseFloat(document.getElementById('input-horas').value);
 
+            if (isNaN(aparatos) || isNaN(horas)) return;
+
             tf.tidy(() => {
                 const input = tf.tensor2d([[aparatos, horas]]);
                 const result = predict(input).dataSync()[0];
                 
                 const predEl = document.getElementById('val-prediction');
                 predEl.innerHTML = `${result.toFixed(1)} <span class="text-2xl text-indigo-400">kWh</span>`;
-                predEl.className = "animate-fade-in block"; // Activar animación
+                predEl.className = "animate-fade-in block"; 
                 
-                // Reset animación hack
+                // Reiniciar animación
                 void predEl.offsetWidth; 
                 
                 document.getElementById('label-prediction').classList.remove('hidden');
@@ -340,20 +376,23 @@
             initModel();
             modelReady = false;
             
-            // Reset UI
+            // Reset UI Values
             document.getElementById('val-epoch').innerText = "0";
             document.getElementById('val-loss').innerText = "--";
             document.getElementById('val-loss').className = "text-2xl font-mono font-semibold text-slate-800";
+            
             document.getElementById('val-status').innerHTML = `No entrenado`;
             document.getElementById('val-status').className = "text-sm font-medium mt-2 flex items-center gap-1 text-amber-600";
             
             document.getElementById('val-prediction').innerHTML = '<span class="text-indigo-600">---</span>';
             document.getElementById('label-prediction').classList.add('hidden');
             
+            // Reset Chart
             lossChart.data.labels = [];
             lossChart.data.datasets[0].data = [];
             lossChart.update();
             document.getElementById('chart-placeholder').style.display = 'flex';
+            document.getElementById('chart-placeholder').classList.remove('hidden');
             
             updateUIState(false);
         }
@@ -378,12 +417,23 @@
             
             const lossEl = document.getElementById('val-loss');
             lossEl.innerText = loss.toFixed(2);
-            if(loss < 100) lossEl.className = "text-2xl font-mono font-semibold text-green-600";
             
-            // Actualizar Gráfico (solo mantenemos últimos puntos para no saturar si fuera muy largo, pero aquí 40 puntos está bien)
+            // Color coding for loss
+            if(loss < 50) lossEl.className = "text-2xl font-mono font-semibold text-emerald-600";
+            else if(loss < 500) lossEl.className = "text-2xl font-mono font-semibold text-indigo-600";
+            else lossEl.className = "text-2xl font-mono font-semibold text-slate-800";
+            
+            // Actualizar Gráfico
             lossChart.data.labels.push(epoch);
             lossChart.data.datasets[0].data.push(loss);
-            lossChart.update('none'); // 'none' para evitar animación pesada en cada frame
+            
+            // Limitar puntos en el gráfico para rendimiento (opcional, pero buena práctica)
+            if (lossChart.data.labels.length > 100) {
+                 // Si hay muchos puntos, podríamos empezar a borrar los viejos o muestrear,
+                 // pero para este demo 2500 epocas / 50 pasos = 50 puntos, es perfecto.
+            }
+            
+            lossChart.update('none'); 
 
             updateWeightsUI();
         }
@@ -397,29 +447,29 @@
             if (training) {
                 btnTrain.disabled = true;
                 btnTrain.className = "flex-1 py-3 px-4 rounded-xl font-medium flex items-center justify-center gap-2 transition-all bg-slate-100 text-slate-400 cursor-not-allowed";
-                btnTrain.innerHTML = "Optimizando pesos...";
+                btnTrain.innerHTML = '<span class="animate-spin mr-2">⟳</span> Entrenando...';
                 
                 badge.classList.remove('hidden');
                 
                 btnPredict.disabled = true;
-                btnPredict.className = "w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all shadow-lg bg-indigo-800 text-indigo-400 cursor-not-allowed";
-                document.getElementById('btn-predict-text').innerText = "Entrenando modelo...";
+                btnPredict.className = "w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all shadow-lg bg-indigo-800 text-indigo-400 cursor-not-allowed border border-indigo-800";
+                document.getElementById('btn-predict-text').innerText = "Modelo en entrenamiento...";
 
             } else {
                 btnTrain.disabled = false;
                 btnTrain.className = "flex-1 py-3 px-4 rounded-xl font-medium flex items-center justify-center gap-2 transition-all bg-indigo-600 text-white hover:bg-indigo-700 shadow-md hover:shadow-lg shadow-indigo-200";
                 btnTrain.innerHTML = '<i data-lucide="play" class="w-5 h-5"></i> Iniciar Entrenamiento';
-                lucide.createIcons(); // Re-render icon
+                lucide.createIcons(); 
 
                 badge.classList.add('hidden');
 
                 if (modelReady) {
                     statusEl.innerHTML = `<i data-lucide="check-circle" class="w-4 h-4"></i> Listo`;
-                    statusEl.className = "text-sm font-medium mt-2 flex items-center gap-1 text-green-600";
+                    statusEl.className = "text-sm font-medium mt-2 flex items-center gap-1 text-emerald-600";
                     lucide.createIcons();
 
                     btnPredict.disabled = false;
-                    btnPredict.className = "w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all shadow-lg bg-yellow-400 text-indigo-900 hover:bg-yellow-300 transform hover:-translate-y-1 cursor-pointer";
+                    btnPredict.className = "w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all shadow-lg bg-yellow-400 text-indigo-900 hover:bg-yellow-300 transform hover:-translate-y-1 cursor-pointer border border-yellow-400";
                     document.getElementById('btn-predict-text').innerText = "Calcular Consumo";
                 }
             }
