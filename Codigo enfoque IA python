@@ -1,0 +1,54 @@
+import tensorflow as tf
+import numpy as np
+# 1. DATOS DE ENTRENAMIENTO
+# [Número de aparatos, Horas de uso]
+X = tf.constant([
+    [2.0, 1.0], [5.0, 2.0], [8.0, 4.0], [10.0, 5.0],
+    [15.0, 8.0], [20.0, 10.0], [1.0, 12.0], [4.0, 6.0]
+], dtype=tf.float32)
+
+# Consumo mensual real
+y = tf.constant([
+    [28.0], [85.0], [215.0], [320.0],
+    [750.0], [1150.0], [95.0], [150.0]
+], dtype=tf.float32)
+
+# 2. VARIABLES DEL MODELO (Pesos y Sesgo)
+# W representa la importancia de cada entrada,
+# b es el ajuste base
+W = tf.Variable(tf.random.normal([2, 1]), name='pesos')
+b = tf.Variable(tf.zeros([1]), name='sesgo')
+
+# 3. FUNCIÓN DEL MODELO (Predicción lineal: y = X * W + b)
+def modelo_ia(x):
+    return tf.matmul(x, W) + b
+
+# 4. FUNCIÓN DE PÉRDIDA (Qué tan lejos estamos del acierto)
+def calcular_error(y_real, y_predicha):
+    return tf.reduce_mean(tf.square(y_real - y_predicha))
+
+# 5. OPTIMIZADOR
+optimizador = tf.optimizers.Adam(learning_rate=0.1)
+
+# 6. CICLO DE ENTRENAMIENTO MANUAL (Sin usar .fit)
+print("Entrenando red neuronal pura con TensorFlow Core...")
+for epoca in range(2000):
+    with tf.GradientTape() as tape:
+        prediccion = modelo_ia(X)
+        error = calcular_error(y, prediccion)
+    gradientes = tape.gradient(error, [W, b])
+    # Aplicamos los cambios a los pesos
+    optimizador.apply_gradients(zip(gradientes, [W, b]))
+
+    if epoca % 500 == 0:
+        print(f"Época {epoca}: Error = {error.numpy():.2f}")
+print("¡Entrenamiento finalizado!")
+
+# 7. PREDICCIÓN FINAL
+print("\n--- PREDICCIÓN DE CONSUMO (SOLO TENSORFLOW) ---")
+v_aparatos = float(input("Número de aparatos: "))
+v_horas = float(input("Horas de uso: "))
+dato_usuario = tf.constant([[v_aparatos, v_horas]], dtype=tf.float32)
+resultado = modelo_ia(dato_usuario)
+
+print(f"\nLa IA predice: {resultado.numpy()[0][0]:.2f} kWh mensuales.")
