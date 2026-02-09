@@ -1,0 +1,383 @@
+import React, { useState, useEffect, useRef } from 'react';
+import * as tf from '@tensorflow/tfjs';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { Brain, Zap, Activity, Play, RotateCcw, CheckCircle, Calculator } from 'lucide-react';
+
+export default function App() {
+  // --- ESTADOS DE LA UI ---
+  const [isTraining, setIsTraining] = useState(false);
+  const [epoch, setEpoch] = useState(0);
+  const [loss, setLoss] = useState(null);
+  const [lossHistory, setLossHistory] = useState([]);
+  const [weights, setWeights] = useState({ w1: 0, w2: 0, b: 0 });
+  const [modelReady, setModelReady] = useState(false);
+  
+  // Estados para la predicción
+  const [inputAparatos, setInputAparatos] = useState(5);
+  const [inputHoras, setInputHoras] = useState(5);
+  const [prediction, setPrediction] = useState(null);
+
+  // Referencias para mantener los tensores de TensorFlow.js
+  const modelRef = useRef({
+    w: null,
+    b: null,
+    optimizer: null
+  });
+
+  // --- 1. DATOS DE ENTRENAMIENTO (Igual que en tu Python) ---
+  const data = {
+    x: [
+      [2.0, 1.0], [5.0, 2.0], [8.0, 4.0], [10.0, 5.0],
+      [15.0, 8.0], [20.0, 10.0], [1.0, 12.0], [4.0, 6.0]
+    ],
+    y: [
+      [28.0], [85.0], [215.0], [320.0],
+      [750.0], [1150.0], [95.0], [150.0]
+    ]
+  };
+
+  // --- INICIALIZACIÓN DEL MODELO ---
+  useEffect(() => {
+    // Inicializamos variables aleatorias como en Python
+    // W = tf.Variable(tf.random.normal([2, 1]))
+    modelRef.current.w = tf.variable(tf.randomNormal([2, 1]));
+    // b = tf.Variable(tf.zeros([1]))
+    modelRef.current.b = tf.variable(tf.zeros([1]));
+    // Optimizador Adam
+    modelRef.current.optimizer = tf.train.adam(0.1);
+
+    return () => {
+      // Limpieza de memoria al desmontar
+      if(modelRef.current.w) modelRef.current.w.dispose();
+      if(modelRef.current.b) modelRef.current.b.dispose();
+    };
+  }, []);
+
+  // --- 3. FUNCIÓN DEL MODELO (y = X * W + b) ---
+  const predict = (xTensor) => {
+    return tf.tidy(() => {
+      return xTensor.matMul(modelRef.current.w).add(modelRef.current.b);
+    });
+  };
+
+  // --- 4. FUNCIÓN DE PÉRDIDA ---
+  const lossFunction = (pred, label) => {
+    return pred.sub(label).square().mean();
+  };
+
+  // --- 6. CICLO DE ENTRENAMIENTO ---
+  const startTraining = async () => {
+    setIsTraining(true);
+    setLossHistory([]);
+    setEpoch(0);
+
+    const xTrain = tf.tensor2d(data.x);
+    const yTrain = tf.tensor2d(data.y);
+
+    // Ciclo asíncrono para no congelar la UI
+    for (let i = 0; i <= 2000; i++) {
+      // Optimizamos un paso
+      modelRef.current.optimizer.minimize(() => {
+        const pred = predict(xTrain);
+        return lossFunction(pred, yTrain);
+      });
+
+      // Actualizamos la UI cada 50 épocas para rendimiento
+      if (i % 50 === 0 || i === 2000) {
+        const currentLoss = lossFunction(predict(xTrain), yTrain).dataSync()[0];
+        const currentW = modelRef.current.w.dataSync();
+        const currentB = modelRef.current.b.dataSync();
+
+        setLoss(currentLoss);
+        setEpoch(i);
+        setWeights({
+          w1: currentW[0],
+          w2: currentW[1],
+          b: currentB[0]
+        });
+        
+        setLossHistory(prev => {
+          const newHistory = [...prev, { epoch: i, loss: currentLoss }];
+          // Mantenemos el gráfico limpio si crece mucho
+          return newHistory.length > 50 ? newHistory.filter((_, idx) => idx % 2 === 0) : newHistory;
+        });
+
+        // Pequeña pausa para que el navegador renderice
+        await new Promise(resolve => requestAnimationFrame(resolve));
+      }
+    }
+
+    xTrain.dispose();
+    yTrain.dispose();
+    setIsTraining(false);
+    setModelReady(true);
+  };
+
+  const handlePredict = () => {
+    if (!modelReady) return;
+    
+    tf.tidy(() => {
+      const input = tf.tensor2d([[parseFloat(inputAparatos), parseFloat(inputHoras)]]);
+      const result = predict(input);
+      setPrediction(result.dataSync()[0]);
+    });
+  };
+
+  const resetModel = () => {
+    setModelReady(false);
+    setPrediction(null);
+    setLossHistory([]);
+    setEpoch(0);
+    setLoss(null);
+    // Reiniciar pesos
+    modelRef.current.w.assign(tf.randomNormal([2, 1]));
+    modelRef.current.b.assign(tf.zeros([1]));
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans selection:bg-indigo-100">
+      
+      {/* HEADER */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
+        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="bg-indigo-600 p-2 rounded-lg">
+              <Brain className="w-5 h-5 text-white" />
+            </div>
+            <h1 className="text-xl font-bold bg-gradient-to-r from-indigo-700 to-indigo-500 bg-clip-text text-transparent">
+              NeuroEnergy AI
+            </h1>
+          </div>
+          <div className="flex items-center gap-4 text-sm text-slate-500">
+            <span className="hidden sm:inline">TensorFlow.js Core</span>
+            <div className="h-4 w-px bg-slate-200"></div>
+            <span className="flex items-center gap-1">
+              <Activity className="w-4 h-4" /> v1.0.0
+            </span>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-6xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        {/* COLUMNA IZQUIERDA: CONTROL Y ESTADO */}
+        <div className="lg:col-span-7 space-y-6">
+          
+          {/* TARJETA DE ENTRENAMIENTO */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <h2 className="font-semibold text-slate-700 flex items-center gap-2">
+                <Activity className="w-5 h-5 text-indigo-500" />
+                Panel de Entrenamiento
+              </h2>
+              {isTraining && (
+                <span className="animate-pulse text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full">
+                  ENTRENANDO...
+                </span>
+              )}
+            </div>
+            
+            <div className="p-6">
+              <div className="grid grid-cols-3 gap-4 mb-6">
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                  <p className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">Época</p>
+                  <p className="text-2xl font-mono font-semibold text-slate-800">{epoch}</p>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                  <p className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">Error (Loss)</p>
+                  <p className={`text-2xl font-mono font-semibold ${loss < 100 ? 'text-green-600' : 'text-slate-800'}`}>
+                    {loss ? loss.toFixed(2) : '--'}
+                  </p>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                  <p className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">Estado</p>
+                  <p className="text-sm font-medium mt-2 flex items-center gap-1">
+                    {modelReady ? (
+                      <span className="text-green-600 flex items-center gap-1"><CheckCircle className="w-4 h-4" /> Listo</span>
+                    ) : (
+                      <span className="text-amber-600">No entrenado</span>
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              {/* GRÁFICO */}
+              <div className="h-64 w-full bg-slate-50 rounded-xl border border-slate-100 p-4 mb-6 relative">
+                 {lossHistory.length > 0 ? (
+                   <ResponsiveContainer width="100%" height="100%">
+                     <LineChart data={lossHistory}>
+                       <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                       <XAxis dataKey="epoch" hide />
+                       <YAxis hide domain={['auto', 'auto']} />
+                       <Tooltip 
+                         contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                         labelStyle={{ color: '#64748b' }}
+                       />
+                       <Line 
+                         type="monotone" 
+                         dataKey="loss" 
+                         stroke="#4f46e5" 
+                         strokeWidth={3} 
+                         dot={false}
+                         animationDuration={300}
+                       />
+                     </LineChart>
+                   </ResponsiveContainer>
+                 ) : (
+                   <div className="absolute inset-0 flex items-center justify-center text-slate-400 text-sm">
+                     Esperando datos de entrenamiento...
+                   </div>
+                 )}
+              </div>
+
+              {/* BOTONES */}
+              <div className="flex gap-3">
+                <button
+                  onClick={startTraining}
+                  disabled={isTraining}
+                  className={`flex-1 py-3 px-4 rounded-xl font-medium flex items-center justify-center gap-2 transition-all
+                    ${isTraining 
+                      ? 'bg-slate-100 text-slate-400 cursor-not-allowed' 
+                      : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-md hover:shadow-lg shadow-indigo-200'}`}
+                >
+                  {isTraining ? 'Optimizando pesos...' : (
+                    <>
+                      <Play className="w-5 h-5" /> Iniciar Entrenamiento
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={resetModel}
+                  disabled={isTraining}
+                  className="px-4 py-3 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+                  title="Reiniciar Modelo"
+                >
+                  <RotateCcw className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* TARJETA DE PESOS INTERNOS */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+            <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <Brain className="w-4 h-4" /> Parámetros Internos (Red Neuronal)
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 font-mono text-sm">
+              <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                <span className="text-indigo-500 block text-xs">Peso Aparatos (W1)</span>
+                {weights.w1.toFixed(4)}
+              </div>
+              <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                <span className="text-indigo-500 block text-xs">Peso Horas (W2)</span>
+                {weights.w2.toFixed(4)}
+              </div>
+              <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                <span className="text-pink-500 block text-xs">Sesgo (Bias b)</span>
+                {weights.b.toFixed(4)}
+              </div>
+            </div>
+            <p className="text-xs text-slate-400 mt-3 italic">
+              Fórmula aprendida: y = (x1 * {weights.w1.toFixed(1)}) + (x2 * {weights.w2.toFixed(1)}) + {weights.b.toFixed(1)}
+            </p>
+          </div>
+        </div>
+
+        {/* COLUMNA DERECHA: PREDICCIÓN */}
+        <div className="lg:col-span-5 space-y-6">
+          
+          <div className="bg-indigo-900 text-white rounded-2xl shadow-xl overflow-hidden relative">
+            <div className="absolute top-0 right-0 p-32 bg-indigo-500 rounded-full blur-3xl opacity-20 -mr-16 -mt-16"></div>
+            
+            <div className="p-6 relative z-10">
+              <h2 className="text-xl font-bold flex items-center gap-2 mb-6">
+                <Zap className="w-6 h-6 text-yellow-400 fill-current" />
+                Zona de Prueba
+              </h2>
+              
+              <div className="space-y-5">
+                <div>
+                  <label className="block text-indigo-200 text-sm font-medium mb-2">Número de Aparatos</label>
+                  <input 
+                    type="number" 
+                    value={inputAparatos}
+                    onChange={(e) => setInputAparatos(Number(e.target.value))}
+                    className="w-full bg-indigo-800/50 border border-indigo-700 rounded-xl px-4 py-3 text-white placeholder-indigo-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-indigo-200 text-sm font-medium mb-2">Horas de Uso Diario</label>
+                  <input 
+                    type="number" 
+                    value={inputHoras}
+                    onChange={(e) => setInputHoras(Number(e.target.value))}
+                    className="w-full bg-indigo-800/50 border border-indigo-700 rounded-xl px-4 py-3 text-white placeholder-indigo-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all"
+                  />
+                </div>
+
+                <button 
+                  onClick={handlePredict}
+                  disabled={!modelReady}
+                  className={`w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all shadow-lg
+                    ${modelReady 
+                      ? 'bg-yellow-400 text-indigo-900 hover:bg-yellow-300 transform hover:-translate-y-1' 
+                      : 'bg-indigo-800 text-indigo-400 cursor-not-allowed'}`}
+                >
+                  <Calculator className="w-5 h-5" />
+                  {modelReady ? 'Calcular Consumo' : 'Entrena el modelo primero'}
+                </button>
+              </div>
+
+              {/* RESULTADO */}
+              <div className="mt-8 pt-6 border-t border-indigo-700/50 text-center">
+                <p className="text-indigo-300 text-sm mb-2 uppercase tracking-wide">Predicción de la IA</p>
+                <div className="text-5xl font-bold text-white mb-2">
+                  {prediction !== null ? (
+                    <span className="animate-in fade-in slide-in-from-bottom-4 duration-500 block">
+                      {prediction.toFixed(1)} <span className="text-2xl text-indigo-400">kWh</span>
+                    </span>
+                  ) : (
+                    <span className="text-indigo-600">---</span>
+                  )}
+                </div>
+                {prediction !== null && (
+                   <p className="text-xs text-indigo-400">Consumo mensual estimado</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* VISUALIZACIÓN DE DATOS (TABLA) */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+            <h3 className="text-sm font-semibold text-slate-700 mb-4">Datos de Entrenamiento (Muestra)</h3>
+            <div className="overflow-hidden rounded-xl border border-slate-200">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-slate-50 text-slate-500 font-semibold">
+                  <tr>
+                    <th className="px-4 py-2">Aparatos</th>
+                    <th className="px-4 py-2">Horas</th>
+                    <th className="px-4 py-2 text-right">Consumo Real</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {data.x.slice(0, 5).map((row, i) => (
+                    <tr key={i} className="hover:bg-slate-50/50">
+                      <td className="px-4 py-2 font-mono text-slate-600">{row[0]}</td>
+                      <td className="px-4 py-2 font-mono text-slate-600">{row[1]}</td>
+                      <td className="px-4 py-2 font-mono text-slate-800 text-right">{data.y[i]} kWh</td>
+                    </tr>
+                  ))}
+                  <tr>
+                    <td colSpan="3" className="px-4 py-2 text-center text-xs text-slate-400 italic">...más datos ocultos...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </main>
+    </div>
+  );
+}
